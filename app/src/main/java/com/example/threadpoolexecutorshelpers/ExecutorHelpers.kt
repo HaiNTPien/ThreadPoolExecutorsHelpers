@@ -1,7 +1,6 @@
 package com.example.threadpoolexecutorshelpers
 
-import android.os.Build
-import androidx.annotation.RequiresApi
+import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import java.util.*
 
@@ -12,59 +11,76 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
     var totalThread = MutableLiveData(0)
     var numberPendingTask = MutableLiveData(0)
     private var countForName = 0
+    private var countThread = 0
 
     fun putTask(r: Runnable, priority: Boolean = false) {
         synchronized(lock = lock) {
             if(priority) { pendingTasksQueue.push(r) } else { pendingTasksQueue.add(r) }
-            numberPendingTask.postValue(pendingTasksQueue.size)
+            updateTaskMessage()
             if (availableThreads.isNotEmpty()) {
                 lock.notifyAll()
+            } else {
+                if(countThread < maxSize) {
+                    createNewThread()
+                    updateThreadMessage()
+                }
             }
-        }
-        if (maxSize != totalThread.value && (availableThreads.isEmpty() || totalThread.value == 0)) {
-             createNewThread()
         }
     }
 
+    private fun updateThreadMessage() {
+        totalThread.postValue(countThread)
+    }
+
+    private fun updateTaskMessage() {
+        numberPendingTask.postValue(pendingTasksQueue.size)
+    }
 
     private fun createNewThread() {
         val name = "Thread${countForName}"
         var timeLastTaskDone = 0L
         val newThread = Thread({
             while (true) {
-                if (pendingTasksQueue.peek() != null) {
+                val task = getFirstPendingTask()
+                if (task != null) {
                     synchronized(lock) {
                         availableThreads.remove(name)
                     }
-                    runFirstPendingTask()
+                    task.run()
                     timeLastTaskDone = System.currentTimeMillis()
                 } else {
                     if (System.currentTimeMillis() - timeLastTaskDone < 5000) {
+                        availableThreads.add(name)
                         synchronized(lock) {
-                            availableThreads.add(name)
                             lock.wait(aliveTime)
                         }
                     } else {
                         synchronized(lock) {
                             availableThreads.remove(name)
                         }
-                        totalThread.postValue(totalThread.value?.minus(1) ?: 0)
+                        countThread --
+                        updateThreadMessage()
                         break
                     }
                 }
             }
         }, name)
-        totalThread.postValue(totalThread.value?.plus(1) ?: 0)
-        countForName++
-        newThread.start()
+        synchronized(lock) {
+            countThread++
+            countForName++
+            newThread.start()
+        }
     }
 
-    private fun runFirstPendingTask() {
+    private fun getFirstPendingTask(): Runnable? {
         var task: Runnable?
         synchronized(lock) {
             task = pendingTasksQueue.poll()
         }
-        numberPendingTask.postValue(pendingTasksQueue.size)
-        task?.run()
+        return if (task == null) null
+        else {
+            updateTaskMessage()
+            task
+        }
     }
 }

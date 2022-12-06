@@ -24,6 +24,10 @@ class MainActivity : AppCompatActivity() {
                 0 -> {
                     i = 1
                     executor.putTask(taskRunUpTo(binding.tv1, 300), false)
+//                    executor.putTask(taskRunUpTo(binding.tv2, 300), false
+//                    executor.putTask(taskRunUpTo(binding.tv3, 300), false)
+//                    executor.putTask(taskRunUpTo(binding.tv3, 150), false)
+//                    executor.putTask(taskRunUpTo(binding.tv3, 150), false)
                 }
                 1 -> {
                     i = 2
@@ -31,7 +35,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     i = 0
-                    executor.putTask(taskRunUpTo(binding.tv3, 150), true)
+                    executor.putTask(taskRunUpTo(binding.tv3, 300), false)
                 }
             }
         }
@@ -48,11 +52,11 @@ class MainActivity : AppCompatActivity() {
             var isRunning = true
             while (isRunning) {
                 val number = (Integer.parseInt(view.text.toString()) + 1)
-                if(number < to) {
+                if (number < to) {
                     view.post {
                         view.text = number.toString()
                     }
-                }else {
+                } else {
                     view.post {
                         view.text = "0"
                     }
