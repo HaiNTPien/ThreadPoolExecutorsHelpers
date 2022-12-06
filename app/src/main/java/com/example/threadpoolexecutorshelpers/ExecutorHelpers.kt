@@ -36,7 +36,9 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
         val newThread = Thread({
             while (true) {
                 if (pendingTasksQueue.peek() != null) {
-                    availableThreads.remove(name)
+                    synchronized(lock) {
+                        availableThreads.remove(name)
+                    }
                     runFirstPendingTask()
                     timeLastTaskDone = System.currentTimeMillis()
                 } else {
@@ -46,7 +48,9 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
                             lock.wait(aliveTime)
                         }
                     } else {
-                        availableThreads.remove(name)
+                        synchronized(lock) {
+                            availableThreads.remove(name)
+                        }
                         totalThread.postValue(totalThread.value?.minus(1) ?: 0)
                         break
                     }
