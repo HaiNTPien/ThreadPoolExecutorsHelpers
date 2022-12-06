@@ -13,8 +13,6 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
     var numberPendingTask = MutableLiveData(0)
     private var countForName = 0
 
-
-    @RequiresApi(Build.VERSION_CODES.N)
     fun putTask(r: Runnable, priority: Boolean = false) {
         synchronized(lock = lock) {
             if(priority) { pendingTasksQueue.push(r) } else { pendingTasksQueue.add(r) }
@@ -29,7 +27,6 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
     }
 
 
-    @RequiresApi(Build.VERSION_CODES.N)
     private fun createNewThread() {
         val name = "Thread${countForName}"
         var timeLastTaskDone = 0L
