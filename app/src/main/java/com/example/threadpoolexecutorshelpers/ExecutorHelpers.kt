@@ -22,7 +22,6 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
             } else {
                 if(countThread < maxSize) {
                     createNewThread()
-                    updateThreadMessage()
                 }
             }
         }
@@ -50,8 +49,8 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
                     timeLastTaskDone = System.currentTimeMillis()
                 } else {
                     if (System.currentTimeMillis() - timeLastTaskDone < 5000) {
-                        availableThreads.add(name)
                         synchronized(lock) {
+                            availableThreads.add(name)
                             lock.wait(aliveTime)
                         }
                     } else {
@@ -69,6 +68,7 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
             countThread++
             countForName++
             newThread.start()
+            updateThreadMessage()
         }
     }
 
