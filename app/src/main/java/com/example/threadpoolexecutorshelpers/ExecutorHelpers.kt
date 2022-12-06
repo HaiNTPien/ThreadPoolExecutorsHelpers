@@ -5,19 +5,19 @@ import androidx.annotation.RequiresApi
 import androidx.lifecycle.MutableLiveData
 import java.util.*
 
-class ExecutorHelpers(private var maxSize: Int = 10, var aliveTime: Long = 5000L) {
+class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long = 5000L) {
     private val availableThreads = mutableListOf<String>()
-    private val pendingTasksQueue: Queue<Runnable> = LinkedList()
+    private val pendingTasksQueue: ArrayDeque<Runnable> = ArrayDeque()
     private var lock = Object()
     var totalThread = MutableLiveData(0)
     var numberPendingTask = MutableLiveData(0)
-    var countForName = 0
+    private var countForName = 0
 
 
     @RequiresApi(Build.VERSION_CODES.N)
-    fun putTask(r: Runnable) {
+    fun putTask(r: Runnable, priority: Boolean = false) {
         synchronized(lock = lock) {
-            pendingTasksQueue.add(r)
+            if(priority) { pendingTasksQueue.push(r) } else { pendingTasksQueue.add(r) }
             numberPendingTask.postValue(pendingTasksQueue.size)
             if (availableThreads.isNotEmpty()) {
                 lock.notifyAll()
@@ -32,18 +32,12 @@ class ExecutorHelpers(private var maxSize: Int = 10, var aliveTime: Long = 5000L
     @RequiresApi(Build.VERSION_CODES.N)
     private fun createNewThread() {
         val name = "Thread${countForName}"
-        var isRunning = true
         var timeLastTaskDone = 0L
         val newThread = Thread({
-            while (isRunning) {
+            while (true) {
                 if (pendingTasksQueue.peek() != null) {
                     availableThreads.remove(name)
-                    var task: Runnable?
-                    synchronized(lock) {
-                        task = pendingTasksQueue.poll()
-                    }
-                    numberPendingTask.postValue(pendingTasksQueue.size)
-                    task?.run()
+                    runFirstPendingTask()
                     timeLastTaskDone = System.currentTimeMillis()
                 } else {
                     if (System.currentTimeMillis() - timeLastTaskDone < 5000) {
@@ -53,8 +47,8 @@ class ExecutorHelpers(private var maxSize: Int = 10, var aliveTime: Long = 5000L
                         }
                     } else {
                         availableThreads.remove(name)
-                        isRunning = false
                         totalThread.postValue(totalThread.value?.minus(1) ?: 0)
+                        break
                     }
                 }
             }
@@ -64,4 +58,12 @@ class ExecutorHelpers(private var maxSize: Int = 10, var aliveTime: Long = 5000L
         newThread.start()
     }
 
+    private fun runFirstPendingTask() {
+        var task: Runnable?
+        synchronized(lock) {
+            task = pendingTasksQueue.poll()
+        }
+        numberPendingTask.postValue(pendingTasksQueue.size)
+        task?.run()
+    }
 }
