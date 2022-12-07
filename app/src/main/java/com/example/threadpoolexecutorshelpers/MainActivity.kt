@@ -24,8 +24,8 @@ class MainActivity : AppCompatActivity() {
                 0 -> {
                     i = 1
                     executor.putTask(taskRunUpTo(binding.tv1, 300), false)
-//                    executor.putTask(taskRunUpTo(binding.tv2, 300), false
-//                    executor.putTask(taskRunUpTo(binding.tv3, 300), false)
+                    executor.putTask(taskRunUpTo(binding.tv2, 300), false)
+                    executor.putTask(taskRunUpTo(binding.tv3, 300), false)
 //                    executor.putTask(taskRunUpTo(binding.tv3, 150), false)
 //                    executor.putTask(taskRunUpTo(binding.tv3, 150), false)
                 }

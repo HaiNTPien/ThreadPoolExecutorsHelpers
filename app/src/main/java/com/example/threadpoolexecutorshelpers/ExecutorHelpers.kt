@@ -5,25 +5,32 @@ import androidx.lifecycle.MutableLiveData
 import java.util.*
 
 class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long = 5000L) {
-    private val availableThreads = mutableListOf<String>()
     private val pendingTasksQueue: ArrayDeque<Runnable> = ArrayDeque()
     private var lock = Object()
     var totalThread = MutableLiveData(0)
     var numberPendingTask = MutableLiveData(0)
     private var countForName = 0
     private var countThread = 0
+    private var countAvailableThread = 0
 
     fun putTask(r: Runnable, priority: Boolean = false) {
+        var needCreateThread = false
         synchronized(lock = lock) {
             if(priority) { pendingTasksQueue.push(r) } else { pendingTasksQueue.add(r) }
             updateTaskMessage()
-            if (availableThreads.isNotEmpty()) {
+            if (countAvailableThread > 0) {
+                countAvailableThread = 0
                 lock.notifyAll()
             } else {
-                if(countThread < maxSize) {
-                    createNewThread()
+                if (countThread < maxSize) {
+                    needCreateThread = true
+                    countThread ++
                 }
             }
+        }
+        if(needCreateThread) {
+            createNewThread()
+            updateThreadMessage()
         }
     }
 
@@ -37,39 +44,30 @@ class ExecutorHelpers(private var maxSize: Int = 10, private var aliveTime: Long
 
     private fun createNewThread() {
         val name = "Thread${countForName}"
+        countForName++
         var timeLastTaskDone = 0L
         val newThread = Thread({
             while (true) {
                 val task = getFirstPendingTask()
                 if (task != null) {
-                    synchronized(lock) {
-                        availableThreads.remove(name)
-                    }
                     task.run()
                     timeLastTaskDone = System.currentTimeMillis()
                 } else {
-                    if (System.currentTimeMillis() - timeLastTaskDone < 5000) {
+                    if (System.currentTimeMillis() - timeLastTaskDone < aliveTime) {
                         synchronized(lock) {
-                            availableThreads.add(name)
+                            countAvailableThread++
                             lock.wait(aliveTime)
                         }
                     } else {
-                        synchronized(lock) {
-                            availableThreads.remove(name)
-                        }
-                        countThread --
+                        countAvailableThread -= 1
+                        countThread -= 1
                         updateThreadMessage()
                         break
                     }
                 }
             }
         }, name)
-        synchronized(lock) {
-            countThread++
-            countForName++
-            newThread.start()
-            updateThreadMessage()
-        }
+        newThread.start()
     }
 
     private fun getFirstPendingTask(): Runnable? {
